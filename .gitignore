@@ -22,6 +22,7 @@ venv
 .env.local
 
 # BookNLP specific
+assets/
 output/
 *.tokens
 *.entities
