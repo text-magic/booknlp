@@ -6,9 +6,9 @@ This method encodes several assumptions:
 
 * This method describes the referential gender of characters, and not their gender identity. Characters are described by the pronouns used to refer to them (e.g., he/him, she/her) rather than labels like "M/F".
 
-* Prior information on the alignment of names with referential gender (e.g., from government records or larger background datasets) can be used to provide some information to inform this process if desired (e.g., "Tom" is often associated with he/him in pre-1923 English texts), but should be updateable *in the context of a specific book* (e.g., "Tom" in the book "Tom and Some Other Girls", where Tom is aligned with she/her). 
+* Prior information on the alignment of names with referential gender (e.g., from government records or larger background datasets) can be used to provide some information to inform this process if desired (e.g., "Tom" is often associated with he/him in pre-1923 English texts), but should be updateable *in the context of a specific book* (e.g., "Tom" in the book "Tom and Some Other Girls", where Tom is aligned with she/her).
 
-* Users should be free to define the referential gender categories used here.  The default is {he, him, his}, 
+* Users should be free to define the referential gender categories used here.  The default is {he, him, his},
 {she, her} and {they, them, their}, but can be expanded to include categories such as {xe, xem, xyr, xir}, {ze, zem, zir, hir}, etc.
 
 
@@ -55,7 +55,7 @@ class GenderEM:
 				self.gender_pronouns[term]=idx
 
 		self.reverseID={self.genderID[k]:k for k in self.genderID}
-		
+
 
 		# f = he/she/they
 		# e = John, Kate, the man, her husband, his mother
@@ -72,7 +72,7 @@ class GenderEM:
 
 		self.vocab={}
 
-		if entityFiles is not None and tokenFiles is not None: 
+		if entityFiles is not None and tokenFiles is not None:
 			self.build_vocab_from_files(entityFiles, tokenFiles)
 		elif tokens is not None and entities is not None and refs is not None:
 			self.build_vocab(tokens, entities, refs)
@@ -100,7 +100,7 @@ class GenderEM:
 				if e not in self.e_counts:
 					self.e_counts[e]=0
 				self.e_counts[e]+=mf[f] + 0.1
-		
+
 
 		# for entities/coref IDs, update the coref ID to include priors on the names associated with that ID
 		# e.g. 17 -> Jane Bennett, Jane, etc. -- we want to include our priors on "Jane" within entity 17
@@ -163,7 +163,7 @@ class GenderEM:
 
 	def read_hyperparams(self, filename):
 		self.hyperparameters={}
-		with open(filename) as file:
+		with open(filename, encoding="utf-8") as file:
 			header=file.readline().rstrip()
 			gender_mapping={}
 			for idx, val in enumerate(header.split("\t")[2:]):
@@ -194,7 +194,7 @@ class GenderEM:
 				if total >= self.upper:
 					for i in range(len(vals)):
 						vals[i]=(vals[i]/total) * self.upper
-					
+
 					self.hyperparameters[("%s\t%s" % (term, proper)).lower()]=vals
 
 			for honorific in self.honorific_priors:
@@ -202,7 +202,7 @@ class GenderEM:
 				if total >= self.upper:
 					for i in range(self.num_genders):
 						self.honorific_priors[honorific][i]=(self.honorific_priors[honorific][i]/total) * self.upper
-					
+
 	def get_head(self, start, end, tokens):
 		phraseHead=None
 		for idd in range(start, end+1):
@@ -240,11 +240,11 @@ class GenderEM:
 						key="%s\t%s" % (text, prop)
 
 
-				self.vocab[key.lower()]=1					
+				self.vocab[key.lower()]=1
 
 
 	def build_vocab_from_files(self, entityFiles, tokenFiles):
-	
+
 
 		for term in self.hyperparameters:
 			self.vocab[term]=1
@@ -259,7 +259,7 @@ class GenderEM:
 
 
 	def tagFromFile(self, entityFiles, tokenFiles):
-		
+
 		all_X=[]
 		all_Y=[]
 
@@ -274,7 +274,7 @@ class GenderEM:
 
 
 		for epoch in range(self.num_epochs):
-			
+
 			for i in tqdm(range(len(all_X))):
 				for e, f in zip(all_X[i], all_Y[i]):
 					self.update(e,f)
@@ -287,10 +287,10 @@ class GenderEM:
 
 	def tag(self, entities, tokens, refs, minThreshold=0):
 
-		X, Y=self.process(tokens, entities, refs)	
+		X, Y=self.process(tokens, entities, refs)
 
 		for epoch in range(self.num_epochs):
-			
+
 			for e, f in zip(X, Y):
 				self.update(e,f)
 
@@ -354,7 +354,7 @@ class GenderEM:
 			j=idx-i
 			if j in loc_starts:
 				for end, comp, text in loc_starts[j]:
-					# skip entities that enclose the pronoun 
+					# skip entities that enclose the pronoun
 					if end < idx:
 						mentions.append((j, end, comp, text))
 
@@ -388,7 +388,7 @@ class GenderEM:
 	def delete_counts(self):
 		for (e,f) in self.joint_e_f_counts:
 			self.joint_e_f_counts[e,f]=0
-		
+
 		for e in self.e_counts:
 			self.e_counts[e]=0
 
@@ -533,7 +533,7 @@ class GenderEM:
 
 		for c in counts:
 			if c not in genders:
-			
+
 
 				total=0
 				maxg=None
@@ -582,7 +582,7 @@ if __name__ == "__main__":
 			ent_files.append(entityFile)
 			tok_files.append(tokensFile)
 
-	genders=[ ["he", "him", "his"], ["she", "her"], ["they", "them", "their"] ] 
+	genders=[ ["he", "him", "his"], ["she", "her"], ["they", "them", "their"] ]
 	genderEM=GenderEM(outfile=outfile, entityFiles=ent_files, tokenFiles=tok_files, hyperparameterFile=hyperparams, genders=genders)
 	genderEM.tagFromFile(ent_files, tok_files)
 

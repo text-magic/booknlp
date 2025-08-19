@@ -1,3 +1,4 @@
+import os
 import torch
 import re
 from booknlp.english.speaker_attribution import BERTSpeakerID
@@ -13,7 +14,7 @@ class QuotationAttribution:
 
 		device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-		base_model=re.sub("google_bert", "google/bert", modelFile.split("/")[-1])
+		base_model=re.sub("google_bert", "google/bert", os.path.basename(modelFile))
 		base_model=re.sub(".model", "", base_model)
 
 		self.model = BERTSpeakerID(base_model=base_model)
@@ -68,7 +69,7 @@ class QuotationAttribution:
 
 				if cat == "QUOTE":
 					g_start, g_end=get_base(start, end, quote_chain)
-	
+
 				if (g_start, g_end) in entity_by_position:
 					quote_chain[quote_start, quote_end]=g_start, g_end
 					attributions[prediction_id]=entity_by_position[g_start, g_end]
@@ -80,7 +81,7 @@ class QuotationAttribution:
 				if ' '.join(sent[ent_start:ent_end]) == "[PAR]":
 					print("Problem!!!! Linked [PAR]")
 					sys.exit(1)
-							
+
 				prediction_id+=1
 
 		return attributions
@@ -184,7 +185,7 @@ class QuotationAttribution:
 			# the offset keeps track of the difference between the original token position and the resulting token position
 			# (after the addition of [PAR], [QUOTE], [ALTQUOTE] pseudo-tokens, and the subtraction of tokens within quotations)
 			offset=0
-			
+
 			# reverse map maps the resulting tokens (which include [PAR], [QUOTE] etc.) to the original position
 			reverse_map=[]
 			altquote_map={}
@@ -222,7 +223,7 @@ class QuotationAttribution:
 					offset+=1
 
 					(q_start, q_end)=quotes[end_quotes[i]]
-		
+
 					# if the alt quote occurs *before* the target quote, add it as an attribution candidate
 					if q_end < end_tok:
 						quotepos=i+inserts[i-start-1]-start
@@ -269,7 +270,7 @@ class QuotationAttribution:
 				# sort the candidates by their distance to the target quote and consider only the 10 closest
 				cands=sorted(cands)
 				for dist, s, e, eid, cat, global_start, global_end in cands[:10]:
-					
+
 					if ' '.join(toks[s:e+1]) == "[PAR]":
 						# skip
 						continue
@@ -297,4 +298,4 @@ class QuotationAttribution:
 				quote_indexes.append(q_id)
 
 		return texts, metas, positions, global_positions, quote_indexes
-	
+

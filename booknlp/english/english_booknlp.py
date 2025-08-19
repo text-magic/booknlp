@@ -15,7 +15,7 @@ from collections import Counter
 from html import escape
 import time
 from pathlib import Path
-import urllib.request 
+import urllib.request
 import pkg_resources
 import torch
 
@@ -36,17 +36,17 @@ class EnglishBookNLP:
 			spacy_nlp = spacy.load(spacy_model, disable=["ner"])
 
 			valid_keys=set("entity,event,supersense,quote,coref".split(","))
-			
+
 			pipes=model_params["pipeline"].split(",")
 
-			self.gender_cats= [ ["he", "him", "his"], ["she", "her"], ["they", "them", "their"], ["xe", "xem", "xyr", "xir"], ["ze", "zem", "zir", "hir"] ] 
+			self.gender_cats= [ ["he", "him", "his"], ["she", "her"], ["they", "them", "their"], ["xe", "xem", "xyr", "xir"], ["ze", "zem", "zir", "hir"] ]
 
 			if "referential_gender_cats" in model_params:
 				self.gender_cats=model_params["referential_gender_cats"]
 
 			home = str(Path.home())
 			modelPath=os.path.join(home, "booknlp_models")
-			if "model_path"  in model_params:			
+			if "model_path"  in model_params:
 				modelPath=model_params["model_path"]
 
 			if not Path(modelPath).is_dir():
@@ -124,7 +124,7 @@ class EnglishBookNLP:
 				self.gender_hyperparameterFile=model_params["referential_gender_hyperparameterFile"]
 			else:
 				self.gender_hyperparameterFile = pkg_resources.resource_filename(__name__, "data/gutenberg_prop_gender_terms.txt")
-			
+
 			pronominalCorefOnly=True
 
 			if "pronominalCorefOnly" in model_params:
@@ -139,7 +139,7 @@ class EnglishBookNLP:
 				sys.exit(1)
 			if not self.doEntities and self.doQuoteAttrib:
 				print("quotation attribution requires entity tagging")
-				sys.exit(1)	
+				sys.exit(1)
 
 
 			self.quoteTagger=QuoteTagger()
@@ -153,7 +153,7 @@ class EnglishBookNLP:
 			if self.doQuoteAttrib:
 				self.quote_attrib=QuotationAttribution(self.quoteAttribModel)
 
-			
+
 			if self.doCoref:
 				self.litbank_coref=LitBankCoref(self.coref_model, self.gender_cats, pronominalCorefOnly=pronominalCorefOnly)
 
@@ -255,7 +255,7 @@ class EnglishBookNLP:
 						sibling_tok=tokens[sibling_id]
 						if sibling_tok.deprel == "conj" and sibling_tok.pos == "VERB":
 							agents[coref].append({"w":sibling_tok.text, "i":sibling_tok.token_id})
-				
+
 				# "Jack was hit by John and William" conj captured by check_conj above
 				elif tok.deprel == "pobj" and head.deprel == "agent":
 					# not root
@@ -281,7 +281,7 @@ class EnglishBookNLP:
 						sibling_tok=tokens[sibling_id]
 						if sibling_tok.deprel == "conj":
 							poss[coref].append({"w":sibling_tok.text, "i":sibling_tok.token_id})
-					
+
 
 		data={}
 		data["characters"]=[]
@@ -322,35 +322,35 @@ class EnglishBookNLP:
 
 				chardata["mentions"]=mentions
 
-				
+
 				data["characters"].append(chardata)
-			
+
 		return data
-			
 
 
-	def process(self, filename, outFolder, idd):		
+
+	def process(self, filename, outFolder, idd):
 
 		with torch.no_grad():
 
 			start_time = time.time()
 			originalTime=start_time
 
-			with open(filename) as file:
+			with open(filename, encoding="utf-8") as file:
 				data=file.read()
 
 				if len(data) == 0:
 					print("Input file is empty: %s" % filename)
-					return 
+					return
 
 				try:
 					os.makedirs(outFolder)
 				except FileExistsError:
 					pass
 
-					
+
 				tokens=self.tagger.tag(data)
-				
+
 				print("--- spacy: %.3f seconds ---" % (time.time() - start_time))
 				start_time=time.time()
 
@@ -397,11 +397,11 @@ class EnglishBookNLP:
 				if self.doEntities:
 
 					entities=entity_vals["entities"]
-		
+
 					in_quotes=[]
 
 					for start, end, cat, text in entities:
-	
+
 						if tokens[start].inQuote or tokens[end].inQuote:
 							in_quotes.append(1)
 						else:
@@ -410,7 +410,7 @@ class EnglishBookNLP:
 
 					# Create entity for first-person narrator, if present
 					refs=self.name_resolver.cluster_narrator(entities, in_quotes, tokens)
-				
+
 					# Cluster non-PER PROP mentions that are identical
 					refs=self.name_resolver.cluster_identical_propers(entities, refs)
 
@@ -422,10 +422,10 @@ class EnglishBookNLP:
 					start_time=time.time()
 
 					# Infer referential gender from he/she/they mentions around characters
-					
+
 					genderEM=GenderEM(tokens=tokens, entities=entities, refs=refs, genders=self.gender_cats, hyperparameterFile=self.gender_hyperparameterFile)
 					genders=genderEM.tag(entities, tokens, refs)
-				
+
 				assignments=None
 				if self.doEntities:
 					assignments=copy.deepcopy(refs)
@@ -442,7 +442,7 @@ class EnglishBookNLP:
 						if a not in ent_names:
 							ent_names[a]=Counter()
 						ent_names[a][e[3]]+=1
-				
+
 					# Update gender estimates from coref data
 					genders=genderEM.update_gender_from_coref(genders, entities, assignments)
 
@@ -451,7 +451,7 @@ class EnglishBookNLP:
 						json.dump(chardata, out)
 
 				if self.doEntities:
-					# Write entities and coref			
+					# Write entities and coref
 					with open(join(outFolder, "%s.entities" % (idd)), "w", encoding="utf-8") as out:
 						out.write("COREF\tstart_token\tend_token\tprop\tcat\ttext\n")
 						for idx, assignment in enumerate(assignments):
@@ -482,7 +482,7 @@ class EnglishBookNLP:
 								speak=None
 							quote=[tok.text for tok in tokens[q_start:q_end+1]]
 							out.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (q_start, q_end, e_start, e_end, cat, speak, ' '.join(quote)))
-					
+
 						out.close()
 
 				if self.doQuoteAttrib and self.doCoref:
@@ -528,7 +528,7 @@ class EnglishBookNLP:
 										proper_name_list+="/[NARRATOR]"
 								out.write("%s %s %s <br />\n" % (char_count, proper_name_list, common_name_list))
 
-				
+
 						out.write("<p>\n")
 
 						out.write("<h2>Major entities (proper, common)</h2>")
@@ -541,7 +541,7 @@ class EnglishBookNLP:
 
 						for idx, (start, end, cat, text) in enumerate(entities):
 							coref=assignments[idx]
-			
+
 							ner_prop=cat.split("_")[0]
 							ner_type=cat.split("_")[1]
 							if ner_prop != "PRON":
@@ -568,7 +568,7 @@ class EnglishBookNLP:
 
 
 						out.write("<h2>Text</h2>\n")
-						
+
 
 						beforeToks=[""]*len(tokens)
 						afterToks=[""]*len(tokens)
@@ -595,10 +595,10 @@ class EnglishBookNLP:
 						for idx in range(len(tokens)):
 							if tokens[idx].paragraph_id != lastP:
 								out.write("<p />")
-							out.write("%s%s%s " % (beforeToks[idx], escape(tokens[idx].text), afterToks[idx])) 
-							lastP=tokens[idx].paragraph_id	
+							out.write("%s%s%s " % (beforeToks[idx], escape(tokens[idx].text), afterToks[idx]))
+							lastP=tokens[idx].paragraph_id
 
-						
+
 						out.write("</html>")
 
 				print("--- TOTAL (excl. startup): %.3f seconds ---, %s words" % (time.time() - originalTime, len(tokens)))

@@ -1,3 +1,4 @@
+import os
 import torch, sys, re
 
 from booknlp.english.bert_coref_quote_pronouns import BERTCorefTagger
@@ -12,7 +13,7 @@ class LitBankCoref:
 
 		device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-		base_model=re.sub("google_bert", "google/bert", modelFile.split("/")[-1])
+		base_model=re.sub("google_bert", "google/bert", os.path.basename(modelFile))
 		base_model=re.sub(".model", "", base_model)
 
 		self.model = BERTCorefTagger(gender_cats=gender_cats, freeze_bert=True, base_model=base_model, pronominalCorefOnly=pronominalCorefOnly)
@@ -40,9 +41,9 @@ class LitBankCoref:
 						ent.quote_mention=attributed_quotations[idx]
 
 		test_matrix, test_index, test_token_positions, test_ent_spans, test_starts, test_ends, test_widths, test_data, test_masks, test_transforms, test_quotes=self.model.get_data(test_doc, test_ents, max_ents, max_words)
-		
+
 		assignments=self.model.forward(test_matrix, test_index, existing=refs, token_positions=test_token_positions, starts=test_starts, ends=test_ends, widths=test_widths, input_ids=test_data, attention_mask=test_masks, transforms=test_transforms, ref_genders=ref_gender, entities=global_entities)
-		
+
 		aliasFile = pkg_resources.resource_filename(__name__, "data/aliases.txt")
 
 		nameCoref=NameCoref(aliasFile)
@@ -87,13 +88,13 @@ class LitBankCoref:
 				sent=[]
 				o_sent=[]
 				length=0
-			
+
 			sent.append(toks)
 			o_sent.append(tok)
 
 			lastSid=tok.sentence_id
 			length+=len(toks)
-		
+
 		sents.append(sent)
 		o_sents.append(o_sent)
 
@@ -127,7 +128,7 @@ class LitBankCoref:
 
 			for word in o_sents[idx]:
 				mapper[word.token_id]=len(sentences), len(sentence)
-				
+
 				wptok=word.text
 				if wptok[0].lower() != wptok[0]:
 					wptok="[CAP] " + wptok.lower()
@@ -137,7 +138,7 @@ class LitBankCoref:
 			o_sent.extend(o_sents[idx])
 
 
-		if len(sentence) > 1:		
+		if len(sentence) > 1:
 			sentence.append("[SEP]")
 			ents.append([])
 			o_sentences.append(o_sent)
@@ -146,7 +147,7 @@ class LitBankCoref:
 		sents=o_sentences
 
 		lastS=-1
-		
+
 		entities=sorted(entities)
 
 		for (start, end, cat, text) in entities:
@@ -163,7 +164,7 @@ class LitBankCoref:
 			inQuote=0
 			if tokens[start].inQuote or tokens[end].inQuote:
 				inQuote=1
-			
+
 
 			ent=Entity(w_in_sent_id_start, w_in_sent_id_end, in_quote=inQuote, quote_eid=None, entity_id=None, text=text)
 			ner_parts=cat.split("_")
