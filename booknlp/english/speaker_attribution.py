@@ -16,7 +16,12 @@ from collections import Counter
 PINK = '\033[95m'
 ENDC = '\033[0m'
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device_type = "cpu"
+if torch.cuda.is_available():
+    device_type = "cuda"
+elif torch.backends.mps.is_available():
+    device_type = "mps"
+device = torch.device(device_type)
 
 
 class BERTSpeakerID(nn.Module):
@@ -43,7 +48,7 @@ class BERTSpeakerID(nn.Module):
 		self.tokenizer.add_tokens(["[QUOTE]", "[ALTQUOTE]", "[PAR]", "[CAP]"], special_tokens=True)
 		self.bert = BertModel.from_pretrained(modelName)
 		self.bert.resize_token_embeddings(len(self.tokenizer))
-			
+
 		self.tanh = nn.Tanh()
 		self.fc = nn.Linear(2*bert_dim, 100)
 		self.fc2 = nn.Linear(100, 1)
@@ -67,19 +72,19 @@ class BERTSpeakerID(nn.Module):
 			target=self.tokenizer.tokenize(word)
 			wps.append((cur, cur+len(target)))
 			cur+=len(target)
-		
+
 		return wps
 
 
 	def get_batches(self, all_x, all_m, batch_size=32, doLowerCase=True):
-				
-		batches_o=[]	
+
+		batches_o=[]
 		batches_x=[]
 		batches_y=[]
 		batches_m=[]
-			
+
 		for i in range(0, len(all_x), batch_size):
-			
+
 			current_batch_input_ids=[]
 			current_batch_attention_mask=[]
 			current_batch_matrix_cands=[]
@@ -166,10 +171,10 @@ class BERTSpeakerID(nn.Module):
 			batches_y.append({"y":torch.LongTensor(current_batch_y).to(device), "eid":current_batch_eid, "quote_eids":current_quote_eids})
 
 		return batches_x, batches_m, batches_y, batches_o
-	
 
-	def forward(self, batch_x, batch_m): 
-		
+
+	def forward(self, batch_x, batch_m):
+
 		_, pooled_outputs, sequence_outputs = self.bert(batch_x["toks"], token_type_ids=None, attention_mask=batch_x["mask"], output_hidden_states=True, return_dict=False)
 
 		out=sequence_outputs[-1]
@@ -177,7 +182,7 @@ class BERTSpeakerID(nn.Module):
 
 		combined_cands=torch.matmul(batch_m["cands"],out)
 		combined_quote=torch.matmul(batch_m["quote"],out)
-		
+
 		combined=torch.cat((combined_cands, combined_quote), axis=2)
 
 		preds = self.fc(combined)

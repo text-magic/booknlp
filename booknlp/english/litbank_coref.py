@@ -13,7 +13,12 @@ class LitBankCoref:
 
     def __init__(self, model_file, gender_cats, pronominalCorefOnly=True):
 
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device_type = "cpu"
+        if torch.cuda.is_available():
+            device_type = "cuda"
+        elif torch.backends.mps.is_available():
+            device_type = "mps"
+        device = torch.device(device_type)
 
         base_model=re.sub("google_bert", "google/bert", os.path.basename(model_file))
         base_model=re.sub(".model", "", base_model)

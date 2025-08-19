@@ -25,7 +25,12 @@ torch.manual_seed(1)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device_type = "cpu"
+if torch.cuda.is_available():
+    device_type = "cuda"
+elif torch.backends.mps.is_available():
+    device_type = "mps"
+device = torch.device(device_type)
 print("using device", device)
 
 
@@ -137,12 +142,12 @@ class BERTCorefTagger(nn.Module):
 
 		attention_weights=self.attention2(self.tanh(self.attention1(embeds))) # num_sents x max_words x 1
 		attention_weights=torch.exp(attention_weights)
-		
+
 		attx=attention_weights.squeeze(-1).unsqueeze(1).expand_as(matrix)
 		summer=attx*matrix
 
 		val=matrix*summer # num_sents x max_ents x max_words
-		
+
 		val=val/torch.sum(1e-8+val,dim=2).unsqueeze(-1)
 
 		attended=torch.matmul(val, embeds) # num_sents x max_ents x 2 * hidden_dim
@@ -151,7 +156,7 @@ class BERTCorefTagger(nn.Module):
 
 		embeds=embeds.contiguous()
 		position_output=embeds.view(-1, self.hidden_dim)
-		
+
 		# starts = token position of beginning of mention in flattened token list
 		start_output=torch.index_select(position_output, 0, starts)
 		# ends = token position of end of mention in flattened token list
@@ -188,7 +193,7 @@ class BERTCorefTagger(nn.Module):
 				for dist, j in sorted(dists, reverse=False):
 					entity.quote_mention=j
 					break
-			
+
 
 
 	def add_property(self, entity_properties, cand_assignment, mention, ref_genders):
@@ -197,11 +202,11 @@ class BERTCorefTagger(nn.Module):
 			entity_properties[cand_assignment]={}
 
 		entity_properties[cand_assignment]["ner_cat"]=mention.ner_cat
-		
+
 
 	def is_compatible(self, cand_mention, eid, entity_properties, mention, ref_genders, score):
 
-		# If we've already given a referential gender to a candidate in a previous step using global 
+		# If we've already given a referential gender to a candidate in a previous step using global
 		# information, respect that global inference when linking pronouns rather than relying on local coref to do it.
 		if len(mention.text.split(" ")) == 1:
 			term=mention.text.lower()
@@ -239,7 +244,7 @@ class BERTCorefTagger(nn.Module):
 
 		k=1
 		for i in range(idx+1, min(idx+1+top, len(entities))):
-			
+
 			if entities[i].in_quote == False:
 				dists.append(i)
 				ent_dist.append(-k)
@@ -248,7 +253,7 @@ class BERTCorefTagger(nn.Module):
 		return np.array(dists), ent_dist
 
 	def forward(self, matrix, index, existing=None, truth=None, token_positions=None, starts=None, ends=None, widths=None, input_ids=None, attention_mask=None, transforms=None, entities=None, ref_genders={}):
-		
+
 		doTrain=False
 		if truth is not None:
 			doTrain=True
@@ -283,7 +288,7 @@ class BERTCorefTagger(nn.Module):
 			quotes=torch.LongTensor(quotes)
 
 			span_reps=self.get_mention_reps(input_ids=input_ids[b], attention_mask=attention_mask[b], starts=starts[b], ends=ends[b], index=index[b], widths=widths[b], quotes=quotes, transforms=transforms[b], matrix=matrix[b], doTrain=doTrain)
-			
+
 			if b == 0:
 				span_representation=span_reps
 				all_starts=starts[b]
@@ -292,13 +297,13 @@ class BERTCorefTagger(nn.Module):
 			else:
 
 				span_representation=torch.cat((span_representation, span_reps), 0)
-	
+
 				all_starts=torch.cat((all_starts, starts[b]), 0)
 				all_ends=torch.cat((all_ends, ends[b]), 0)
 
 		all_starts=all_starts.to(device)
 		all_ends=all_ends.to(device)
-		
+
 		num_mentions,=all_starts.shape
 
 		running_loss=0
@@ -333,7 +338,7 @@ class BERTCorefTagger(nn.Module):
 		for inQuoteVal in [False, True]:
 
 			for i in range(num_mentions):
-				
+
 				entity=entities[i]
 
 				if entity.in_quote != inQuoteVal:
@@ -352,12 +357,12 @@ class BERTCorefTagger(nn.Module):
 					curid+=1
 					assignments[i]=assignment
 
-					continue				
+					continue
 
 				if i == 0:
 					# the first mention must start a new entity; this doesn't affect training (since the loss must be 0) so we can skip it.
 					if not doTrain:
-						
+
 						if existing is None or (existing is not None and existing[i] == -1):
 							assignment=curid
 							curid+=1
@@ -365,7 +370,7 @@ class BERTCorefTagger(nn.Module):
 						else:
 
 							assignments[i]=existing[i]
-					
+
 					continue
 
 				MAX_PREVIOUS_MENTIONS=20
@@ -390,21 +395,21 @@ class BERTCorefTagger(nn.Module):
 				if len(cands_idx) == 0:
 
 					if truth is None:
-						
+
 						if existing is None or (existing is not None and existing[i] == -1):
 							assignment=curid
 							curid+=1
 							assignments[i]=assignment
 						else:
 							assignments[i]=existing[i]
-					
+
 					continue
 
 				else:
 
 					targets=span_representation[cands_idx]
 					cp=span_representation[i].expand_as(targets)
-					
+
 					dists=[]
 					nesteds=[]
 
@@ -468,10 +473,10 @@ class BERTCorefTagger(nn.Module):
 					preds=preds.squeeze(-1)
 
 				if doTrain:
-		
+
 					# zero is the score for the dummy antecedent/new entity
 					preds=torch.cat((preds, zeroTensor))
-		
+
 					golds_sum=0.
 					preds_sum=torch.logsumexp(preds, 0)
 
@@ -513,13 +518,13 @@ class BERTCorefTagger(nn.Module):
 								cand_idx=arg_sorts[k]
 								if preds[cand_idx] > 0:
 									score=preds[cand_idx]
-									
+
 									cand_assignment=assignments[cands_idx[cand_idx]]
 									cand_mention=entities[cands_idx[cand_idx]]
 									if cand_assignment is None:
 										print("problem!", cands_idx[cand_idx], preds[cand_idx], cand_assignment, i, inQuoteVal, assignments, torch.sort(preds, descending=True))
 										sys.exit(1)
-									
+
 									if self.is_compatible(cand_mention, cand_assignment, entity_properties, entity, ref_genders, score):
 										assignment=cand_assignment
 										ch+=1
@@ -539,7 +544,7 @@ class BERTCorefTagger(nn.Module):
 							curid+=1
 
 						assignments[i]=assignment
-				
+
 
 		if truth is not None:
 			return running_loss
@@ -577,7 +582,7 @@ class BERTCorefTagger(nn.Module):
 			mapper.append(mapper_e)
 
 		out.write("#begin document (%s); part %s\n" % (doc_id, part_id))
-		
+
 		cur_tok=0
 		tok_id=0
 
@@ -672,7 +677,7 @@ class BERTCorefTagger(nn.Module):
 
 		sent_count=0
 		for idx, sent in enumerate(doc):
-			
+
 			if len(sent) > max_w:
 				max_w=len(sent)
 			if len(ents[idx]) > max_e:
@@ -811,7 +816,7 @@ class BERTCorefTagger(nn.Module):
 			max_len = max([len(sent) for sent in batch_data[b]])
 
 			for j in range(len(batch_data[b])):
-				
+
 				blen=len(batch_data[b][j])
 
 				for k in range(blen, max_len):
@@ -826,7 +831,7 @@ class BERTCorefTagger(nn.Module):
 			batch_data[b]=torch.LongTensor(batch_data[b])
 			batch_transforms[b]=torch.FloatTensor(np.array(batch_transforms[b]))
 			batch_masks[b]=torch.FloatTensor(batch_masks[b])
-			
+
 		tok_pos=0
 		starts=[]
 		ends=[]
@@ -915,7 +920,7 @@ class BERTCorefTagger(nn.Module):
 
 			else:
 				cands_idx, _=self.get_closest_entities(first, idx, all_ents)
-				
+
 			cands_idx=cands_idx[-MAX_PREVIOUS_MENTIONS:]
 
 			vals=[]
@@ -929,7 +934,7 @@ class BERTCorefTagger(nn.Module):
 
 	def read_conll(self, filename, quotes={}):
 
-		
+
 		sentence_breaks={}
 
 		docid=None
@@ -1058,7 +1063,7 @@ class BERTCorefTagger(nn.Module):
 					all_antecedent_labels.append(doc_antecedent_labels)
 					all_max_words.append(max_words+1)
 					all_max_ents.append(max_ents+1)
-					
+
 					all_doc_names.append((docid,partID))
 
 				else:
@@ -1072,7 +1077,7 @@ class BERTCorefTagger(nn.Module):
 						continue
 					# new sentence
 					if (cur_tokens >= max_allowable_tokens and open_count == 0):
-			
+
 						sent.append("[SEP]")
 						all_doc_sents.append(sent)
 
@@ -1131,9 +1136,9 @@ class BERTCorefTagger(nn.Module):
 							if sid == end_sid and wid == end_wid:
 								inQuote=False, None, None, None, None, None
 								adjusted_quotes.append((lastQuoteStart[0], lastQuoteStart[1], cur_batch_sid, tid))
-			
+
 						# see if this word starts a new quote
-						for start_sid, start_wid, end_sid, end_wid, eid in quotes[docid][sid]["START"]:		
+						for start_sid, start_wid, end_sid, end_wid, eid in quotes[docid][sid]["START"]:
 							if sid == start_sid and wid == start_wid:
 								inQuote=True, eid, start_sid, start_wid, end_sid, end_wid
 								lastQuoteStart=cur_batch_sid, tid
@@ -1149,7 +1154,7 @@ class BERTCorefTagger(nn.Module):
 							ents[(tid,tid)]=Entity(tid, tid, in_quote=inQuote[0], quote_eid=inQuote[1], quote_id=len(adjusted_quotes), entity_id=c, text=' '.join(sent[tid:tid+1]))
 							ents[(tid,tid)].global_start=global_id
 							ents[(tid,tid)].global_end=global_id
-							
+
 						elif c.startswith("("):
 							c=int(re.sub("\(", "", c))
 
