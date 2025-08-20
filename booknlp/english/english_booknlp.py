@@ -27,12 +27,9 @@ class EnglishBookNLP:
         with torch.no_grad():
             start_time = time.time()
 
-            print(model_params)
+            print("model params:", model_params)
 
-            spacy_model = "en_core_web_sm"
-
-            if "spacy_model" in model_params:
-                spacy_model = model_params["spacy_model"]
+            spacy_model = "en_core_web_sm" if "spacy_model" not in model_params else model_params["spacy_model"]
 
             spacy_nlp = spacy.load(spacy_model, disable=["ner"])
 
@@ -68,21 +65,21 @@ class EnglishBookNLP:
                 if not Path(self.entityPath).is_file():
                     print(f"downloading {entityName}")
                     urllib.request.urlretrieve(
-                        "http://people.ischool.berkeley.edu/~dbamman/booknlp_models/%s" % entityName, self.entityPath
+                        f"http://people.ischool.berkeley.edu/~dbamman/booknlp_models/{entityName}", self.entityPath
                     )
 
                 self.coref_model = os.path.join(modelPath, corefName)
                 if not Path(self.coref_model).is_file():
                     print(f"downloading {corefName}")
                     urllib.request.urlretrieve(
-                        "http://people.ischool.berkeley.edu/~dbamman/booknlp_models/%s" % corefName, self.coref_model
+                        f"http://people.ischool.berkeley.edu/~dbamman/booknlp_models/{corefName}", self.coref_model
                     )
 
                 self.quoteAttribModel = os.path.join(modelPath, quoteAttribName)
                 if not Path(self.quoteAttribModel).is_file():
                     print(f"downloading {quoteAttribName}")
                     urllib.request.urlretrieve(
-                        "http://people.ischool.berkeley.edu/~dbamman/booknlp_models/%s" % quoteAttribName,
+                        f"http://people.ischool.berkeley.edu/~dbamman/booknlp_models/{quoteAttribName}",
                         self.quoteAttribModel,
                     )
 
@@ -95,21 +92,21 @@ class EnglishBookNLP:
                 if not Path(self.entityPath).is_file():
                     print("downloading %s" % entityName)
                     urllib.request.urlretrieve(
-                        "http://people.ischool.berkeley.edu/~dbamman/booknlp_models/%s" % entityName, self.entityPath
+                        f"http://people.ischool.berkeley.edu/~dbamman/booknlp_models/{entityName}", self.entityPath
                     )
 
                 self.coref_model = os.path.join(modelPath, corefName)
                 if not Path(self.coref_model).is_file():
                     print("downloading %s" % corefName)
                     urllib.request.urlretrieve(
-                        "http://people.ischool.berkeley.edu/~dbamman/booknlp_models/%s" % corefName, self.coref_model
+                        f"http://people.ischool.berkeley.edu/~dbamman/booknlp_models/{corefName}", self.coref_model
                     )
 
                 self.quoteAttribModel = os.path.join(modelPath, quoteAttribName)
                 if not Path(self.quoteAttribModel).is_file():
                     print("downloading %s" % quoteAttribName)
                     urllib.request.urlretrieve(
-                        "http://people.ischool.berkeley.edu/~dbamman/booknlp_models/%s" % quoteAttribName,
+                        f"http://people.ischool.berkeley.edu/~dbamman/booknlp_models/{quoteAttribName}",
                         self.quoteAttribModel,
                     )
 
@@ -145,10 +142,9 @@ class EnglishBookNLP:
                     __name__, "data/gutenberg_prop_gender_terms.txt"
                 )
 
-            pronominalCorefOnly = True
-
-            if "pronominalCorefOnly" in model_params:
-                pronominalCorefOnly = model_params["pronominalCorefOnly"]
+            pronominalCorefOnly = (
+                True if "pronominalCorefOnly" not in model_params else model_params["pronominalCorefOnly"]
+            )
 
             if not self.doEntities and self.doCoref:
                 print("coref requires entity tagging")
@@ -370,7 +366,7 @@ class EnglishBookNLP:
                         with open(join(out_folder, "%s.supersense" % (idd)), "w", encoding="utf-8") as out:
                             out.write("start_token\tend_token\tsupersense_category\ttext\n")
                             for start, end, cat, text in supersense_entities:
-                                out.write("%s\t%s\t%s\t%s\n" % (start, end, cat, text))
+                                out.write(f"{start}\t{end}\t{cat}\t{text}\n")
 
                     if self.doEvent:
                         events = entity_vals["events"]
