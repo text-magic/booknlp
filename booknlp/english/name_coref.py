@@ -262,7 +262,7 @@ class NameCoref:
     def read_file(self, spanFile):
         entities = []
         is_named = []
-        with open(spanFile) as file:
+        with open(spanFile, encoding="utf-8") as file:
             for line in file:
                 cols = line.rstrip().split("\t")
 
