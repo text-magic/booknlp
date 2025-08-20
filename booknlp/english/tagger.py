@@ -25,9 +25,9 @@ class Tagger(nn.Module):
         super(Tagger, self).__init__()
 
         modelName = base_model
-        modelName = re.sub("^entities_", "", modelName)
-        modelName = re.sub("-v\d.*$", "", modelName)
-        matcher = re.search(".*-(\d+)_H-(\d+)_A-.*", modelName)
+        modelName = re.sub(r"^entities_", "", modelName)
+        modelName = re.sub(r"-v\d.*$", "", modelName)
+        matcher = re.search(r".*-(\d+)_H-(\d+)_A-.*", modelName)
         bert_dim = 0
         modelSize = 0
         self.num_layers = 0
@@ -295,7 +295,7 @@ class Tagger(nn.Module):
                         if prev[0] != "O" and prev[1] != label:
                             break
 
-                    if flag == False:
+                    if not flag:
                         sequence[idx] = self.tagset["B-%s" % label]
 
         def get_layer_transformation(tag_space, t):
@@ -368,7 +368,7 @@ class Tagger(nn.Module):
                         if prev[0] != "O" and prev[1] != label:
                             break
 
-                    if flag == False:
+                    if not flag:
                         sequence[idx] = self.supersense_tagset["B-%s" % label]
 
         def get_supersense_layer_transformation(tag_space, t):
@@ -562,7 +562,7 @@ class Tagger(nn.Module):
                         if prev[0] != "O" and prev[1] != label:
                             break
 
-                    if flag == False:
+                    if not flag:
                         sequence[idx] = self.tagset["B-%s" % label]
 
         def get_layer_transformation(tag_space, t):
@@ -725,7 +725,7 @@ class Tagger(nn.Module):
                         if prev[0] != "O" and prev[1] != label:
                             break
 
-                    if flag == False:
+                    if not flag:
                         sequence[idx] = self.supersense_tagset["B-%s" % label]
 
         def get_layer_transformation(tag_space, t):

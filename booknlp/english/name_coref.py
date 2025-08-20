@@ -285,8 +285,8 @@ class NameCoref:
         return entities, is_named
 
     def process(self, spanFile):
-        entities, is_named = read_file(spanFile)
-        cluster(entities, is_named)
+        entities, is_named = self.read_file(spanFile)
+        self.cluster(entities, is_named)
 
     def cluster_identical_propers(self, entities, refs):
         """Assign all mentions that are identical to the same entity (used in combination with only performing

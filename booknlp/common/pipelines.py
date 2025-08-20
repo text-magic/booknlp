@@ -1,5 +1,7 @@
 import re
 
+from spacy.tokens import Doc
+
 
 class Entity:
     def __init__(
@@ -125,9 +127,6 @@ class Token:
 
         # print(sents)
         return sents
-
-
-from spacy.tokens import Doc
 
 
 class SpacyPipeline:
