@@ -1,10 +1,12 @@
 import os
-import torch
 import re
-from booknlp.english.speaker_attribution import BERTSpeakerID
-from booknlp.common.utils import get_device
-import numpy as np
 import sys
+
+import numpy as np
+import torch
+
+from booknlp.common.utils import get_device
+from booknlp.english.speaker_attribution import BERTSpeakerID
 
 PINK = "\033[95m"
 ENDC = "\033[0m"

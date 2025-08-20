@@ -1,20 +1,14 @@
+import random
 import re
 import sys
 
-from transformers import BertModel
-from transformers import BertTokenizer
-
+import numpy as np
 import torch
 from torch import nn
-import numpy as np
-import random
+from transformers import BertModel, BertTokenizer
 
+from booknlp.common.pipelines import Entity, Token
 from booknlp.common.utils import get_device
-from booknlp.common.pipelines import Token, Entity
-from booknlp.english.litbank_quote import QuoteTagger
-from booknlp.english.name_coref import NameCoref
-
-from booknlp.english.bert_qa import QuotationAttribution
 
 random.seed(1)
 np.random.seed(1)

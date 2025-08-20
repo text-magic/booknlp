@@ -1,12 +1,13 @@
 import re
-from transformers import BertTokenizer, BertModel
 
-import torch.nn as nn
-import torch
 import numpy as np
+import torch
+import torch.nn as nn
+from torch.nn import CrossEntropyLoss
+from transformers import BertModel, BertTokenizer
+
 import booknlp.common.crf as crf
 import booknlp.common.sequence_eval as sequence_eval
-from torch.nn import CrossEntropyLoss
 
 
 class Tagger(nn.Module):

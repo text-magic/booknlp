@@ -1,6 +1,8 @@
-import sys
 import argparse
+import sys
+
 from transformers import logging
+
 from booknlp.english.english_booknlp import EnglishBookNLP
 
 logging.set_verbosity_error()
@@ -29,11 +31,11 @@ def proc():
     outputFolder = args["outputFolder"]
     idd = args["id"]
 
-    print("tagging %s" % inputFile)
+    print(f"tagging {inputFile}")
 
     valid_languages = set(["en"])
     if language not in valid_languages:
-        print("%s not recognized; supported languages: %s" % (language, valid_languages))
+        print(f"{language} not recognized; supported languages: {valid_languages}")
         sys.exit(1)
 
     model_params = {

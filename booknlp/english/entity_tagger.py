@@ -1,10 +1,12 @@
 import os
-from booknlp.english.tagger import Tagger
-import torch
 import re
+
+import pkg_resources
+import torch
+
 import booknlp.common.layered_reader as layered_reader
 import booknlp.common.sequence_layered_reader as sequence_layered_reader
-import pkg_resources
+from booknlp.english.tagger import Tagger
 
 
 class LitBankEntityTagger:

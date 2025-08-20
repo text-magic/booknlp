@@ -1,10 +1,11 @@
 import re
-from transformers import BertTokenizer, BertModel
-import torch.nn as nn
-import torch
-import numpy as np
-from booknlp.common.b3 import b3
 
+import numpy as np
+import torch
+import torch.nn as nn
+from transformers import BertModel, BertTokenizer
+
+from booknlp.common.b3 import b3
 
 PINK = "\033[95m"
 ENDC = "\033[0m"

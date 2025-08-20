@@ -1,25 +1,25 @@
 import copy
-import os
 import json
+import os
 import sys
-import spacy
 import time
-
-from booknlp.common.pipelines import SpacyPipeline
-from booknlp.english.entity_tagger import LitBankEntityTagger
-from booknlp.english.gender_inference_model_1 import GenderEM
-from booknlp.english.name_coref import NameCoref
-from booknlp.english.litbank_coref import LitBankCoref
-from booknlp.english.litbank_quote import QuoteTagger
-from booknlp.english.bert_qa import QuotationAttribution
-
-from os.path import join
+import urllib.request
 from collections import Counter
 from html import escape
+from os.path import join
 from pathlib import Path
-import urllib.request
+
 import pkg_resources
+import spacy
 import torch
+
+from booknlp.common.pipelines import SpacyPipeline
+from booknlp.english.bert_qa import QuotationAttribution
+from booknlp.english.entity_tagger import LitBankEntityTagger
+from booknlp.english.gender_inference_model_1 import GenderEM
+from booknlp.english.litbank_coref import LitBankCoref
+from booknlp.english.litbank_quote import QuoteTagger
+from booknlp.english.name_coref import NameCoref
 
 
 class EnglishBookNLP:
@@ -30,12 +30,13 @@ class EnglishBookNLP:
             print(model_params)
 
             spacy_model = "en_core_web_sm"
+
             if "spacy_model" in model_params:
                 spacy_model = model_params["spacy_model"]
 
             spacy_nlp = spacy.load(spacy_model, disable=["ner"])
 
-            valid_keys = set("entity,event,supersense,quote,coref".split(","))
+            valid_pipelines = ["entity", "event", "supersense", "quote", "coref"]
 
             pipes = model_params["pipeline"].split(",")
 
@@ -120,7 +121,7 @@ class EnglishBookNLP:
             self.doEntities = self.doCoref = self.doQuoteAttrib = self.doSS = self.doEvent = False
 
             for pipe in pipes:
-                if pipe not in valid_keys:
+                if pipe not in valid_pipelines:
                     print("unknown pipe: %s" % pipe)
                     sys.exit(1)
                 if pipe == "entity":
@@ -177,7 +178,7 @@ class EnglishBookNLP:
 
             self.tagger = SpacyPipeline(spacy_nlp)
 
-            print("--- startup: %.3f seconds ---" % (time.time() - start_time))
+            print(f"--- startup: {time.time() - start_time:.3f} seconds ---")
 
     def get_syntax(self, tokens, entities, assignments, genders):
         def check_conj(tok, tokens):
@@ -337,7 +338,7 @@ class EnglishBookNLP:
 
         return data
 
-    def process(self, filename, outFolder, idd):
+    def process(self, filename, out_folder, idd):
         with torch.no_grad():
             start_time = time.time()
             originalTime = start_time
@@ -346,17 +347,17 @@ class EnglishBookNLP:
                 data = file.read()
 
                 if len(data) == 0:
-                    print("Input file is empty: %s" % filename)
+                    print(f"Input file is empty: {filename}")
                     return
 
                 try:
-                    os.makedirs(outFolder)
+                    os.makedirs(out_folder)
                 except FileExistsError:
                     pass
 
                 tokens = self.tagger.tag(data)
 
-                print("--- spacy: %.3f seconds ---" % (time.time() - start_time))
+                print(f"--- spacy: {time.time() - start_time:.3f} seconds ---")
                 start_time = time.time()
 
                 if self.doEvent or self.doEntities or self.doSS:
@@ -366,7 +367,7 @@ class EnglishBookNLP:
                     entity_vals["entities"] = sorted(entity_vals["entities"])
                     if self.doSS:
                         supersense_entities = entity_vals["supersense"]
-                        with open(join(outFolder, "%s.supersense" % (idd)), "w", encoding="utf-8") as out:
+                        with open(join(out_folder, "%s.supersense" % (idd)), "w", encoding="utf-8") as out:
                             out.write("start_token\tend_token\tsupersense_category\ttext\n")
                             for start, end, cat, text in supersense_entities:
                                 out.write("%s\t%s\t%s\t%s\n" % (start, end, cat, text))
@@ -377,7 +378,7 @@ class EnglishBookNLP:
                             if token.token_id in events:
                                 token.event = "EVENT"
 
-                    with open(join(outFolder, "%s.tokens" % (idd)), "w", encoding="utf-8") as out:
+                    with open(join(out_folder, "%s.tokens" % (idd)), "w", encoding="utf-8") as out:
                         out.write(
                             "%s\n"
                             % "\t".join(
@@ -401,20 +402,20 @@ class EnglishBookNLP:
                         for token in tokens:
                             out.write("%s\n" % token)
 
-                    print("--- entities: %.3f seconds ---" % (time.time() - start_time))
+                    print(f"--- entities: {time.time() - start_time:.3f} seconds ---")
                     start_time = time.time()
 
                 in_quotes = []
                 quotes = self.quoteTagger.tag(tokens)
 
-                print("--- quotes: %.3f seconds ---" % (time.time() - start_time))
+                print(f"--- quotes: {time.time() - start_time:.3f} seconds ---")
                 start_time = time.time()
 
                 if self.doQuoteAttrib:
                     entities = entity_vals["entities"]
                     attributed_quotations = self.quote_attrib.tag(quotes, entities, tokens)
 
-                    print("--- attribution: %.3f seconds ---" % (time.time() - start_time))
+                    print(f"--- attribution: {time.time() - start_time:.3f} seconds ---")
                     # return time.time() - start_time
                     start_time = time.time()
 
@@ -438,7 +439,7 @@ class EnglishBookNLP:
                     # Cluster mentions of named people
                     refs = self.name_resolver.cluster_only_nouns(entities, refs, tokens)
 
-                    print("--- name coref: %.3f seconds ---" % (time.time() - start_time))
+                    print(f"--- name coref: {time.time() - start_time:.3f} seconds ---")
 
                     start_time = time.time()
 
@@ -461,7 +462,7 @@ class EnglishBookNLP:
                     torch.cuda.empty_cache()
                     assignments = self.litbank_coref.tag(tokens, entities, refs, genders, attributed_quotations, quotes)
 
-                    print("--- coref: %.3f seconds ---" % (time.time() - start_time))
+                    print(f"--- coref: {time.time() - start_time:.3f} seconds ---")
                     start_time = time.time()
 
                     ent_names = {}
@@ -474,12 +475,12 @@ class EnglishBookNLP:
                     genders = genderEM.update_gender_from_coref(genders, entities, assignments)
 
                     chardata = self.get_syntax(tokens, entities, assignments, genders)
-                    with open(join(outFolder, "%s.book" % (idd)), "w", encoding="utf-8") as out:
+                    with open(join(out_folder, "%s.book" % (idd)), "w", encoding="utf-8") as out:
                         json.dump(chardata, out)
 
                 if self.doEntities:
                     # Write entities and coref
-                    with open(join(outFolder, "%s.entities" % (idd)), "w", encoding="utf-8") as out:
+                    with open(join(out_folder, "%s.entities" % (idd)), "w", encoding="utf-8") as out:
                         out.write("COREF\tstart_token\tend_token\tprop\tcat\ttext\n")
                         for idx, assignment in enumerate(assignments):
                             start, end, cat, text = entities[idx]
@@ -488,7 +489,7 @@ class EnglishBookNLP:
                             out.write("%s\t%s\t%s\t%s\t%s\t%s\n" % (assignment, start, end, ner_prop, ner_type, text))
 
                 if self.doQuoteAttrib:
-                    with open(join(outFolder, "%s.quotes" % (idd)), "w", encoding="utf-8") as out:
+                    with open(join(out_folder, "%s.quotes" % (idd)), "w", encoding="utf-8") as out:
                         out.write(
                             "\t".join(
                                 [
@@ -543,7 +544,7 @@ class EnglishBookNLP:
                         else:
                             names[coref][text.lower()] += 0.001
 
-                    with open(join(outFolder, "%s.book.html" % (idd)), "w", encoding="utf-8") as out:
+                    with open(join(out_folder, "%s.book.html" % (idd)), "w", encoding="utf-8") as out:
                         out.write("<html>")
                         out.write("""<head>
 		  <meta charset="UTF-8">
@@ -644,7 +645,6 @@ class EnglishBookNLP:
 
                         out.write("</html>")
 
-                print(
-                    "--- TOTAL (excl. startup): %.3f seconds ---, %s words" % (time.time() - originalTime, len(tokens))
-                )
+                print(f"--- TOTAL (excl. startup): {time.time() - originalTime:.3f} seconds ---, {len(tokens)} words")
+
                 return time.time() - originalTime

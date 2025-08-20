@@ -4,9 +4,10 @@ e.g., Tom, Tom Saywer, Mr. Tom Sawyer, Mr. Sawyer -> TOM SAYWER
 
 """
 
-from collections import Counter
-import sys
 import itertools
+import sys
+from collections import Counter
+
 import pkg_resources
 
 
